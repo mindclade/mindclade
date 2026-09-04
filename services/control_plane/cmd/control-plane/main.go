@@ -17,9 +17,12 @@ import (
 
 	gcppubsub "cloud.google.com/go/pubsub/v2"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/mindclade/mindclade/libs/go/eventruntime"
 	"github.com/mindclade/mindclade/libs/go/inbox"
+	"github.com/mindclade/mindclade/libs/go/observability"
 	"github.com/mindclade/mindclade/libs/go/outbox"
 	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	adminapp "github.com/mindclade/mindclade/services/control_plane/internal/admin"
@@ -37,6 +40,12 @@ import (
 )
 
 func main() {
+	// Install before anything can fail. Until this runs the process emits through
+	// Go's default text handler, which is neither structured nor correlated, so a
+	// startup failure would be the one event least able to be diagnosed.
+	observability.Install("control-plane")
+	observability.InstallPropagator()
+
 	ctx, cancelStartup := context.WithTimeout(context.Background(), 20*time.Second)
 	resources, err := newProductionResources(ctx)
 	if err != nil {
@@ -895,16 +904,36 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 }
 
 func (r *productionResources) dispatchOutbox(ctx context.Context) error {
+	// The dispatcher is the component whose failure is least visible: a stalled
+	// outbox looks exactly like an idle one from outside the process. tenant is a
+	// permitted label because the tenant set is a startup allowlist.
+	delivered, deliveredErr := observability.Counter(
+		"control-plane", "outbox.messages.delivered",
+		"Envelopes published from the transactional outbox.", "{message}", "tenant",
+	)
+	failures, failuresErr := observability.Counter(
+		"control-plane", "outbox.batches.failed",
+		"Outbox delivery batches that ended in an error.", "{batch}", "tenant",
+	)
+	if err := errors.Join(deliveredErr, failuresErr); err != nil {
+		return fmt.Errorf("construct outbox instruments: %w", err)
+	}
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		batchFull := false
 		for _, tenantID := range r.tenantIDs {
-			delivered, err := r.dispatcher.DeliverBatch(ctx, tenantID, 100)
+			tenantAttribute := metric.WithAttributes(attribute.String("tenant", tenantID))
+			count, err := r.dispatcher.DeliverBatch(ctx, tenantID, 100)
+			if count > 0 {
+				delivered.Add(ctx, int64(count), tenantAttribute)
+			}
 			if err != nil && !errors.Is(err, context.Canceled) {
+				failures.Add(ctx, 1, tenantAttribute)
 				slog.Warn("transactional outbox delivery failed", "tenant", tenantID, "error", err)
 			}
-			batchFull = batchFull || delivered == 100
+			batchFull = batchFull || count == 100
 		}
 		if ctx.Err() != nil {
 			return nil
