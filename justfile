@@ -102,6 +102,7 @@ _governance-source:
       --manifest docs/architecture/blueprint/manifest.yaml \
       --check
     {{ python }} tools/ci/required_check.py --validate-adrs .
+    {{ python }} tools/ci/pipeline_plan.py --self-test
     {{ python }} -m unittest discover -s tools/repo/tests -p 'test_*.py'
     {{ python }} -m unittest discover -s tools/docs/tests -p 'test_*.py'
     wave0_sources="$({{ bazel }} query 'kind("source file", deps(//:wave0_governance_sources))')"
