@@ -204,9 +204,7 @@ def fixture_report(
         root.mkdir()
         (root / "README.md").write_text("greenfield\n", encoding="utf-8")
         (root / ".github").mkdir()
-        (root / ".github/CODEOWNERS").write_text(
-            "* @mindclade/developer-platform\n", encoding="utf-8"
-        )
+        (root / ".github/CODEOWNERS").write_text("* @mindclade/platform\n", encoding="utf-8")
         external = base / "manifest.json"
         external.write_text(json.dumps(manifest), encoding="utf-8")
         reference_paths: dict[str, Path] = {}

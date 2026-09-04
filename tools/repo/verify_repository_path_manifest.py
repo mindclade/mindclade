@@ -8,9 +8,10 @@ import json
 import re
 import sys
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, cast
 
+from build_graph import BUILD_FILE_NAME, IGNORED_NAMES, IGNORED_ROOTS
 from build_graph import target_sources as read_target_sources
 from dependency_policy import validate_dependency_graph
 from owner_policy import discover_components, validate_owners
@@ -166,6 +167,67 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
     return errors
 
 
+def _package_of(path: str) -> str:
+    """The Bazel package a repository-relative path belongs to, root as ''."""
+    parent = str(PurePosixPath(path).parent)
+    return "" if parent == "." else parent
+
+
+def _discover_build_packages(root: Path) -> set[str]:
+    """Every BUILD package on disk, applying build_graph's own ignore rules."""
+    packages: set[str] = set()
+    for build_file in root.rglob(BUILD_FILE_NAME):
+        parts = build_file.relative_to(root).parts[:-1]
+        if any(part in IGNORED_NAMES for part in parts):
+            continue
+        if parts and parts[0] in IGNORED_ROOTS:
+            continue
+        if any(part.startswith("bazel-") for part in parts):
+            continue
+        packages.add("/".join(parts))
+    return packages
+
+
+def _assert_examined_packages_cover_the_tree(
+    manifest: Mapping[str, Any], root: Path, examined_sources: set[str]
+) -> list[str]:
+    """Name every live BUILD package the declared-target walk never examined.
+
+    validate_declared_targets parses only what a declared label transitively
+    reaches. A package that stops being reached -- because the label pulling it in
+    was deleted, renamed, or narrowed -- simply drops out of the walk, and every
+    check above then passes while asserting nothing about it. That is the failure
+    build_graph's own docstring names: a membership checker that quietly
+    under-reports converts a visibly skipped gate into an invisibly green one.
+
+    Coverage is derived independently -- packages from disk, liveness from the
+    manifest -- rather than compared against a hand-maintained count, so it cannot
+    drift the way the counts this repository keeps re-pinning do.
+
+    A package is exempt only when the manifest declares none of its files active or
+    generated: it is future work the walk is right to skip.
+    """
+    discovered = _discover_build_packages(root)
+    if not discovered:
+        return ["build package discovery found no BUILD.bazel; the coverage check asserted nothing"]
+    if not examined_sources:
+        return ["declared-target walk reached no sources; the coverage check asserted nothing"]
+
+    live_packages = {
+        _package_of(str(entry["path"]))
+        for entry in manifest["paths"]
+        if entry.get("status") in {"active", "generated"}
+    }
+    examined_packages = {_package_of(source) for source in examined_sources}
+    unexamined = sorted((discovered & live_packages) - examined_packages)
+    if unexamined:
+        return [
+            "BUILD package declares active or generated paths that no declared target "
+            f"reaches, so nothing validates it: {[name or '//' for name in unexamined]}"
+        ]
+    return []
+
+
 def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[str]:
     labels = {
         label
@@ -207,6 +269,15 @@ def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[s
         for label in (*entry.get("build_targets", []), *entry.get("test_targets", [])):
             if label in target_sources and entry["path"] not in target_sources[label]:
                 errors.append(f"{label} does not cover active path: {entry['path']}")
+
+    # Only meaningful once every declared label resolved. When one did not, the walk
+    # is known-incomplete, the real failure is already named above, and asserting
+    # coverage on top of it would report a second error for the same cause.
+    if not errors:
+        examined_sources: set[str] = set()
+        for sources in target_sources.values():
+            examined_sources |= sources
+        errors.extend(_assert_examined_packages_cover_the_tree(manifest, root, examined_sources))
     return errors
 
 

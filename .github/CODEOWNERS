@@ -1,94 +1,94 @@
 # Default semantic owner for the canonical product monorepo.
-* @mindclade/product-engineering
+* @mindclade/product
 
 # Exact active root governance ownership.
-/.bazelignore @mindclade/developer-platform
-/.bazelrc @mindclade/developer-platform
-/.bazelversion @mindclade/developer-platform
-/.editorconfig @mindclade/developer-platform
-/.gitattributes @mindclade/developer-platform
-/.gitignore @mindclade/developer-platform
-/.golangci.yml @mindclade/developer-platform
-/.markdownlint-cli2.yaml @mindclade/developer-platform
-/.pre-commit-config.yaml @mindclade/developer-platform
-/.python-version @mindclade/developer-platform
-/.yamllint.yaml @mindclade/developer-platform
-/AGENTS.md @mindclade/developer-platform
-/ARCHITECTURE.md @mindclade/developer-platform
-/BUILD.bazel @mindclade/developer-platform
-/CODE_OF_CONDUCT.md @mindclade/developer-platform
-/CONTRIBUTING.md @mindclade/developer-platform
-/Cargo.lock @mindclade/developer-platform
-/Cargo.toml @mindclade/developer-platform
+/.bazelignore @mindclade/platform
+/.bazelrc @mindclade/platform
+/.bazelversion @mindclade/platform
+/.editorconfig @mindclade/platform
+/.gitattributes @mindclade/platform
+/.gitignore @mindclade/platform
+/.golangci.yml @mindclade/platform
+/.markdownlint-cli2.yaml @mindclade/platform
+/.pre-commit-config.yaml @mindclade/platform
+/.python-version @mindclade/platform
+/.yamllint.yaml @mindclade/platform
+/AGENTS.md @mindclade/platform
+/ARCHITECTURE.md @mindclade/platform
+/BUILD.bazel @mindclade/platform
+/CODE_OF_CONDUCT.md @mindclade/platform
+/CONTRIBUTING.md @mindclade/platform
+/Cargo.lock @mindclade/platform
+/Cargo.toml @mindclade/platform
 /LICENSE @mindclade/security
-/MODULE.bazel @mindclade/developer-platform
-/MODULE.bazel.lock @mindclade/developer-platform
+/MODULE.bazel @mindclade/platform
+/MODULE.bazel.lock @mindclade/platform
 /NOTICE @mindclade/security
-/README.md @mindclade/developer-platform
+/README.md @mindclade/platform
 /SECURITY.md @mindclade/security
-/biome.json @mindclade/developer-platform
-/buf.gen.yaml @mindclade/developer-platform
-/buf.lock @mindclade/developer-platform
-/buf.yaml @mindclade/developer-platform
-/component.yaml @mindclade/product-engineering
-/flake.lock @mindclade/developer-platform
-/flake.nix @mindclade/developer-platform
-/go.mod @mindclade/developer-platform
-/go.sum @mindclade/developer-platform
-/justfile @mindclade/developer-platform
-/package.json @mindclade/developer-platform
-/pnpm-lock.yaml @mindclade/developer-platform
-/pnpm-workspace.yaml @mindclade/developer-platform
-/pyproject.toml @mindclade/developer-platform
-/rust-toolchain.toml @mindclade/developer-platform
-/uv.lock @mindclade/developer-platform
+/biome.json @mindclade/platform
+/buf.gen.yaml @mindclade/platform
+/buf.lock @mindclade/platform
+/buf.yaml @mindclade/platform
+/component.yaml @mindclade/product
+/flake.lock @mindclade/platform
+/flake.nix @mindclade/platform
+/go.mod @mindclade/platform
+/go.sum @mindclade/platform
+/justfile @mindclade/platform
+/package.json @mindclade/platform
+/pnpm-lock.yaml @mindclade/platform
+/pnpm-workspace.yaml @mindclade/platform
+/pyproject.toml @mindclade/platform
+/rust-toolchain.toml @mindclade/platform
+/uv.lock @mindclade/platform
 
 # Repository build, automation, and developer experience.
-/.buildkite/ @mindclade/developer-platform @mindclade/security
-/.devcontainer/ @mindclade/developer-platform
-/.github/ @mindclade/developer-platform @mindclade/security
-/.vscode/ @mindclade/developer-platform
-/generated/ @mindclade/developer-platform
-/BUILD.bazel @mindclade/developer-platform
-/MODULE.bazel @mindclade/developer-platform
-/flake.lock @mindclade/developer-platform
-/flake.nix @mindclade/developer-platform
-/justfile @mindclade/developer-platform
-/tools/ @mindclade/developer-platform
-/tools/release/ @mindclade/developer-platform @mindclade/security
-/tools/qualification/ @mindclade/developer-platform @mindclade/security
-/tools/codegen/rust_plugins/ @mindclade/architecture
-/docs/BUILD.bazel @mindclade/developer-platform
-/docs/README.md @mindclade/developer-platform
+/.buildkite/ @mindclade/platform @mindclade/security
+/.devcontainer/ @mindclade/platform
+/.github/ @mindclade/platform @mindclade/security
+/.vscode/ @mindclade/platform
+/generated/ @mindclade/platform
+/BUILD.bazel @mindclade/platform
+/MODULE.bazel @mindclade/platform
+/flake.lock @mindclade/platform
+/flake.nix @mindclade/platform
+/justfile @mindclade/platform
+/tools/ @mindclade/platform
+/tools/release/ @mindclade/platform @mindclade/security
+/tools/qualification/ @mindclade/platform @mindclade/security
+/tools/codegen/rust_plugins/ @mindclade/engineering
+/docs/BUILD.bazel @mindclade/platform
+/docs/README.md @mindclade/platform
 
 # Wave 1 contract, library, durability, and local-integration ownership.
-/protocols/ @mindclade/architecture @mindclade/security
-/sdks/ @mindclade/product-engineering @mindclade/architecture @mindclade/security
-/libs/ @mindclade/developer-platform
-/services/control_plane/ @mindclade/product-engineering @mindclade/security
-/deploy/ @mindclade/platform-operations @mindclade/security
-/tests/ @mindclade/developer-platform @mindclade/security
-/third_party/ @mindclade/security @mindclade/developer-platform
-/kernels/native/ @mindclade/ml-systems
-/kernels/native/stable_abi/tensor_bridge.h @mindclade/ml-systems
-/kernels/pairformer/ @mindclade/ml-systems
-/examples/ @mindclade/developer-platform
+/protocols/ @mindclade/engineering @mindclade/security
+/sdks/ @mindclade/product @mindclade/engineering @mindclade/security
+/libs/ @mindclade/platform
+/services/control_plane/ @mindclade/product @mindclade/security
+/deploy/ @mindclade/infrastructure @mindclade/security
+/tests/ @mindclade/platform @mindclade/security
+/third_party/ @mindclade/security @mindclade/platform
+/kernels/native/ @mindclade/model-training
+/kernels/native/stable_abi/tensor_bridge.h @mindclade/model-training
+/kernels/pairformer/ @mindclade/model-training
+/examples/ @mindclade/platform
 /workers/ingestion_worker/ @mindclade/data-platform
-/workers/training_worker/ @mindclade/ml-systems
+/workers/training_worker/ @mindclade/model-training
 
 # Architecture, security, and foundational domain decisions.
-/docs/architecture/ @mindclade/architecture
-/docs/adr/ @mindclade/architecture
-/docs/governance/ @mindclade/architecture @mindclade/security
-/docs/policies/ @mindclade/architecture
-/docs/adr/0005-biological-identity-and-schema-evolution.md @mindclade/computational-biology @mindclade/biological-safety
-/docs/adr/0007-training-state-progress-and-checkpoint.md @mindclade/ml-systems @mindclade/architecture
+/docs/architecture/ @mindclade/engineering
+/docs/adr/ @mindclade/engineering
+/docs/governance/ @mindclade/engineering @mindclade/security
+/docs/policies/ @mindclade/engineering
+/docs/adr/0005-biological-identity-and-schema-evolution.md @mindclade/research @mindclade/biosecurity
+/docs/adr/0007-training-state-progress-and-checkpoint.md @mindclade/model-training @mindclade/engineering
 /SECURITY.md @mindclade/security
-/tools/licenses/ @mindclade/security @mindclade/developer-platform
-/docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0019-jit-06-transition-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
-/docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/tools/licenses/ @mindclade/security @mindclade/platform
+/docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0019-jit-06-transition-sm90a-sm100a.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md @mindclade/engineering @mindclade/model-training @mindclade/security
+/docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md @mindclade/engineering @mindclade/model-training @mindclade/security
