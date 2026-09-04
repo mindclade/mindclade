@@ -47,42 +47,13 @@ func datasetProto(ctx context.Context, tx *sql.Tx, row datasetRow) (*datasetv1.D
 	if row.deleted.Valid {
 		value.DeleteTime = timestamppb.New(row.deleted.Time.UTC())
 	}
-	value.Labels = map[string]string{}
-	rows, err := tx.QueryContext(ctx, `SELECT label_key,label_value FROM dataset_labels WHERE tenant_id=$1 AND project_id=$2 AND dataset_name=$3 ORDER BY label_key`, row.tenant, row.project, row.name)
-	if err != nil {
+	var err error
+	if value.Labels, err = platformdb.LoadStringMap(ctx, tx, `SELECT label_key,label_value FROM dataset_labels WHERE tenant_id=$1 AND project_id=$2 AND dataset_name=$3 ORDER BY label_key`, row.tenant, row.project, row.name); err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var key, item string
-		if err = rows.Scan(&key, &item); err != nil {
-			_ = platformdb.CloseRows(rows)
-			return nil, err
-		}
-		value.Labels[key] = item
-	}
-	if err = rows.Err(); err != nil {
-		_ = platformdb.CloseRows(rows)
+	if value.Annotations, err = platformdb.LoadStringMap(ctx, tx, `SELECT annotation_key,annotation_value FROM dataset_annotations WHERE tenant_id=$1 AND project_id=$2 AND dataset_name=$3 ORDER BY annotation_key`, row.tenant, row.project, row.name); err != nil {
 		return nil, err
 	}
-	_ = platformdb.CloseRows(rows)
-	value.Annotations = map[string]string{}
-	rows, err = tx.QueryContext(ctx, `SELECT annotation_key,annotation_value FROM dataset_annotations WHERE tenant_id=$1 AND project_id=$2 AND dataset_name=$3 ORDER BY annotation_key`, row.tenant, row.project, row.name)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var key, item string
-		if err = rows.Scan(&key, &item); err != nil {
-			_ = platformdb.CloseRows(rows)
-			return nil, err
-		}
-		value.Annotations[key] = item
-	}
-	if err = rows.Err(); err != nil {
-		_ = platformdb.CloseRows(rows)
-		return nil, err
-	}
-	_ = platformdb.CloseRows(rows)
 	return value, nil
 }
 

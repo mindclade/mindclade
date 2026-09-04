@@ -96,8 +96,8 @@ func tenantProto(ctx context.Context, tx *sql.Tx, row tenantRow) (*adminv1.Tenan
 	value := &adminv1.Tenant{
 		Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag,
 		DisplayName: row.display, State: adminv1.TenantState(row.state), DefaultClassification: row.classification,
-		BillingAccount: billing, Labels: map[string]string{}, Annotations: map[string]string{},
-		CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()),
+		BillingAccount: billing,
+		CreateTime:     timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()),
 	}
 	if row.deleted.Valid {
 		value.DeleteTime = timestamppb.New(row.deleted.Time.UTC())
@@ -144,33 +144,13 @@ func tenantProto(ctx context.Context, tx *sql.Tx, row tenantRow) (*adminv1.Tenan
 		return nil, err
 	}
 	_ = platformdb.CloseRows(rows)
-	if err = loadMap(ctx, tx, `SELECT label_key,label_value FROM administrative_tenant_labels WHERE tenant_id=$1 ORDER BY label_key`, []any{row.tenant}, value.Labels); err != nil {
+	if value.Labels, err = platformdb.LoadStringMap(ctx, tx, `SELECT label_key,label_value FROM administrative_tenant_labels WHERE tenant_id=$1 ORDER BY label_key`, row.tenant); err != nil {
 		return nil, err
 	}
-	if err = loadMap(ctx, tx, `SELECT annotation_key,annotation_value FROM administrative_tenant_annotations WHERE tenant_id=$1 ORDER BY annotation_key`, []any{row.tenant}, value.Annotations); err != nil {
+	if value.Annotations, err = platformdb.LoadStringMap(ctx, tx, `SELECT annotation_key,annotation_value FROM administrative_tenant_annotations WHERE tenant_id=$1 ORDER BY annotation_key`, row.tenant); err != nil {
 		return nil, err
 	}
 	return value, nil
-}
-
-func loadMap(ctx context.Context, tx *sql.Tx, query string, args []any, target map[string]string) error {
-	rows, err := tx.QueryContext(ctx, query, args...)
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var key, value string
-		if err = rows.Scan(&key, &value); err != nil {
-			_ = platformdb.CloseRows(rows)
-			return err
-		}
-		target[key] = value
-	}
-	if err = rows.Err(); err != nil {
-		_ = platformdb.CloseRows(rows)
-		return err
-	}
-	return platformdb.CloseRows(rows)
 }
 
 func replaceTenantChildren(ctx context.Context, tx *sql.Tx, tenantID string, value *adminv1.Tenant) error {
@@ -261,8 +241,8 @@ func projectProto(ctx context.Context, tx *sql.Tx, row projectRow) (*adminv1.Pro
 	value := &adminv1.Project{
 		Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, Tenant: tenant,
 		DisplayName: row.display, Purpose: row.purpose, State: adminv1.ProjectState(row.state),
-		DefaultClassification: row.classification, Labels: map[string]string{}, Annotations: map[string]string{},
-		CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()),
+		DefaultClassification: row.classification,
+		CreateTime:            timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()),
 	}
 	if row.deleted.Valid {
 		value.DeleteTime = timestamppb.New(row.deleted.Time.UTC())
@@ -318,10 +298,10 @@ func projectProto(ctx context.Context, tx *sql.Tx, row projectRow) (*adminv1.Pro
 		}
 		value.PolicySnapshots = append(value.PolicySnapshots, item)
 	}
-	if err = loadMap(ctx, tx, `SELECT label_key,label_value FROM administrative_project_labels WHERE tenant_id=$1 AND project_id=$2 ORDER BY label_key`, []any{row.tenant, row.project}, value.Labels); err != nil {
+	if value.Labels, err = platformdb.LoadStringMap(ctx, tx, `SELECT label_key,label_value FROM administrative_project_labels WHERE tenant_id=$1 AND project_id=$2 ORDER BY label_key`, row.tenant, row.project); err != nil {
 		return nil, err
 	}
-	if err = loadMap(ctx, tx, `SELECT annotation_key,annotation_value FROM administrative_project_annotations WHERE tenant_id=$1 AND project_id=$2 ORDER BY annotation_key`, []any{row.tenant, row.project}, value.Annotations); err != nil {
+	if value.Annotations, err = platformdb.LoadStringMap(ctx, tx, `SELECT annotation_key,annotation_value FROM administrative_project_annotations WHERE tenant_id=$1 AND project_id=$2 ORDER BY annotation_key`, row.tenant, row.project); err != nil {
 		return nil, err
 	}
 	return value, nil

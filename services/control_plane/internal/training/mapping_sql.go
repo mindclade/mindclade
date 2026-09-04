@@ -145,20 +145,12 @@ func runRowProto(ctx context.Context, tx *sql.Tx, row runRow) (*trainingv1.Train
 }
 
 func loadLabels(ctx context.Context, tx *sql.Tx, tenantID, projectID, runName string) (map[string]string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT label_key, label_value FROM training_run_labels WHERE tenant_id=$1 AND project_id=$2 AND training_run_name=$3 ORDER BY label_key`, tenantID, projectID, runName)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	values := make(map[string]string)
-	for rows.Next() {
-		var key, value string
-		if err := rows.Scan(&key, &value); err != nil {
-			return nil, err
-		}
-		values[key] = value
-	}
-	return values, rows.Err()
+	return platformdb.LoadStringMap(
+		ctx, tx,
+		`SELECT label_key, label_value FROM training_run_labels `+
+			`WHERE tenant_id=$1 AND project_id=$2 AND training_run_name=$3 ORDER BY label_key`,
+		tenantID, projectID, runName,
+	)
 }
 
 func storeProgress(ctx context.Context, tx *sql.Tx, tenantID string, value *trainingv1.TrainingProgress) (sql.NullInt64, error) {
