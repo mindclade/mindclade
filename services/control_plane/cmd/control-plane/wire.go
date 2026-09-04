@@ -19,6 +19,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1884,7 +1886,12 @@ func newRuntimeWithAuthorizer(
 	if err != nil {
 		return nil, fmt.Errorf("listen for gRPC: %w", err)
 	}
+	// otelgrpc reports RPC duration, size and status per method, which §7.13
+	// requires because metrics rather than log parsing drive SLOs. It is a stats
+	// handler rather than an interceptor so it observes stream lifecycle as well,
+	// and it records nothing until a meter provider is installed.
 	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(authorizer.unary),
 		grpc.StreamInterceptor(authorizer.stream),
 	)
@@ -1910,8 +1917,11 @@ func newRuntimeWithAuthorizer(
 		grpcListener: listener,
 		grpcServer:   grpcServer,
 		httpServer: &http.Server{
-			Addr:              httpAddress,
-			Handler:           httpGateway,
+			Addr: httpAddress,
+			// otelhttp only wraps the handler and the response writer; it does not
+			// buffer, so the long-lived SSE responses below keep streaming under
+			// their own per-frame write deadlines.
+			Handler:           otelhttp.NewHandler(httpGateway, "control-plane"),
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
 			// Long-lived SSE connections cannot use one server-wide WriteTimeout.

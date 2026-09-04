@@ -380,3 +380,90 @@ func resourceForExperiment(value *experimentv1.Experiment) *commonv1.ResourceRef
 func resourceForStudy(value *experimentv1.Study) *commonv1.ResourceRef { return studyResource(value) }
 
 func resourceForTrial(value *experimentv1.Trial) *commonv1.ResourceRef { return trialResource(value) }
+
+// TestPostgresExperimentListLoadsEveryRowsOwnChildren covers the list path, which
+// had no test at all: the lifecycle test above exercises Create, Get, Update and
+// Transition, so a defect reachable only through ListExperiments was invisible.
+//
+// It asserts that each row carries its own labels, annotations and subjects
+// rather than another row's or none. That is the precise failure a set-keyed
+// child load can introduce, and the reason the assertions compare per-row rather
+// than counting.
+func TestPostgresExperimentListLoadsEveryRowsOwnChildren(t *testing.T) {
+	db := experimentIntegrationDB(t)
+	ctx := context.Background()
+	suffix := strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", "")
+	identity := Identity{TenantID: "experiment-list-" + suffix, ProjectID: "project", Principal: "principal"}
+	codec, err := NewPageTokenCodec([]byte(strings.Repeat("experiment-integration-key", 2)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := SQLRepository{DB: db, Pagination: codec, Events: GeneratedEventFactory{}}
+	t.Cleanup(func() { cleanupExperimentTenant(t, db, identity.TenantID) })
+
+	at := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	project := &commonv1.ResourceRef{ResourceType: "project", ResourceId: identity.ProjectID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, Name: projectParent(identity)}
+	usePolicy := referenceFixture(identity, "use_policy", "policy", projectParent(identity)+"/usePolicies/policy", 3)
+
+	type expectation struct {
+		labels      map[string]string
+		annotations map[string]string
+		subject     string
+	}
+	expected := map[string]expectation{}
+	for index, id := range []string{"alpha", "beta", "gamma"} {
+		subjectName := projectParent(identity) + "/datasets/pdb/releases/" + id
+		subject := referenceFixture(identity, "dataset_release", id, subjectName, int64(index+1))
+		labels := map[string]string{"owner": id, "tier": "t" + id}
+		annotations := map[string]string{"purpose": "non-clinical-" + id}
+		create := &experimentv1.CreateExperimentCommand{
+			Context: commandContext(identity, "list-create-"+id, "list-create-key-"+id), Project: project,
+			ExperimentId: id, DisplayName: "Study " + id, Kind: experimentv1.ExperimentKind_EXPERIMENT_KIND_SCIENTIFIC,
+			IntentManifest: artifactFixture(id), Subjects: []*commonv1.ResourceRef{subject}, UsePolicy: usePolicy,
+			PolicyClassification: "INTERNAL", Labels: labels, Annotations: annotations,
+		}
+		digest := sealCommand(t, create, create.GetContext())
+		value, _, createErr := repository.CreateExperiment(ctx, identity, create, digest, at.Add(time.Duration(index)*time.Second))
+		if createErr != nil {
+			t.Fatalf("create %s: %v", id, createErr)
+		}
+		expected[value.GetName()] = expectation{labels: labels, annotations: annotations, subject: subjectName}
+	}
+
+	page := Page{Limit: 10, Parent: projectParent(identity), Order: "create_time desc,name desc"}
+	values, _, _, err := repository.ListExperiments(ctx, identity, page)
+	if err != nil {
+		t.Fatalf("list experiments: %v", err)
+	}
+	if len(values) != len(expected) {
+		t.Fatalf("listed %d experiments, want %d", len(values), len(expected))
+	}
+	for _, value := range values {
+		want, known := expected[value.GetName()]
+		if !known {
+			t.Fatalf("list returned an unexpected experiment: %s", value.GetName())
+		}
+		if len(value.GetLabels()) != len(want.labels) {
+			t.Fatalf("%s carries %d labels, want %d", value.GetName(), len(value.GetLabels()), len(want.labels))
+		}
+		for key, item := range want.labels {
+			if value.GetLabels()[key] != item {
+				t.Fatalf("%s label %s=%q, want %q", value.GetName(), key, value.GetLabels()[key], item)
+			}
+		}
+		for key, item := range want.annotations {
+			if value.GetAnnotations()[key] != item {
+				t.Fatalf("%s annotation %s=%q, want %q", value.GetName(), key, value.GetAnnotations()[key], item)
+			}
+		}
+		if len(value.GetSubjects()) != 1 || value.GetSubjects()[0].GetName() != want.subject {
+			t.Fatalf("%s subjects=%v, want exactly %s", value.GetName(), value.GetSubjects(), want.subject)
+		}
+		if value.GetUsePolicy().GetName() != usePolicy.GetName() {
+			t.Fatalf("%s lost its use policy reference", value.GetName())
+		}
+		if value.GetIntentManifest().GetDigest() == "" {
+			t.Fatalf("%s lost its intent manifest reference", value.GetName())
+		}
+	}
+}

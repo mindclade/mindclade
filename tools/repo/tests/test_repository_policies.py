@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -913,6 +914,82 @@ class PairformerWave6GovernanceTests(unittest.TestCase):
             self.assertIn("no K4, K5", entry["activation_criterion"])
         for path in self.policy.NATIVE_ADR0022_GENERATED_PROJECTIONS:
             self.assertEqual(self.policy.build_path_entry(path)["status"], "generated")
+
+
+class ControlPlaneReadinessContractTest(unittest.TestCase):
+    """Hold verifyDatabase's hardcoded table set to what the migrations create.
+
+    services/control_plane/cmd/control-plane/main.go asserts row-level security
+    over seven groups of table names written out by hand, with a hardcoded count
+    per group. Today those names and counts are exactly right. Nothing keeps them
+    right: no test reaches verifyDatabase, and a new vertical that adds a table
+    without editing Go loses its isolation assertion silently, reported only as
+    "35/36 tables force RLS" with no name attached.
+
+    The migrations are the authority, so the check derives from them. It reads
+    both forms: the literal ALTER TABLE statements every migration but one uses,
+    and the plpgsql FOREACH loop in 000005 that applies RLS dynamically.
+    """
+
+    MIGRATIONS = REPO_ROOT / "services/control_plane/migrations"
+    RUNTIME = REPO_ROOT / "services/control_plane/cmd/control-plane/main.go"
+
+    @staticmethod
+    def _quoted(block: str) -> list[str]:
+        return re.findall(r"'([a-z0-9_]+)'", block)
+
+    def _forced_by_migrations(self) -> set[str]:
+        forced: set[str] = set()
+        for path in sorted(self.MIGRATIONS.glob("*.up.sql")):
+            text = path.read_text(encoding="utf-8")
+            forced.update(
+                re.findall(r"ALTER TABLE\s+([a-z0-9_]+)\s+FORCE ROW LEVEL SECURITY", text)
+            )
+            # 000005 applies RLS through a plpgsql loop rather than literal
+            # statements, so a purely statement-based reader would miss all 31 of
+            # its tables and report a false drift.
+            for block in re.findall(r"FOREACH[^\[]*ARRAY\[(.*?)\]", text, re.S):
+                if "FORCE ROW LEVEL SECURITY" in text:
+                    forced.update(self._quoted(block))
+        return forced
+
+    def _runtime_groups(self) -> list[list[str]]:
+        text = self.RUNTIME.read_text(encoding="utf-8")
+        return [self._quoted(block) for block in re.findall(r"= ANY\(ARRAY\[(.*?)\]\)", text, re.S)]
+
+    def test_every_forced_table_is_asserted_by_the_readiness_check(self) -> None:
+        forced = self._forced_by_migrations()
+        self.assertTrue(forced, "no forced-RLS tables parsed from the migrations")
+        asserted = {name for group in self._runtime_groups() for name in group}
+        self.assertTrue(asserted, "no RLS table arrays parsed from the readiness check")
+        self.assertEqual(
+            sorted(forced - asserted),
+            [],
+            "migrations force RLS on tables the readiness check never asserts",
+        )
+        self.assertEqual(
+            sorted(asserted - forced),
+            [],
+            "the readiness check asserts tables no migration creates",
+        )
+
+    def test_each_group_count_matches_its_table_list(self) -> None:
+        text = self.RUNTIME.read_text(encoding="utf-8")
+        counts = [int(value) for value in re.findall(r"forced[A-Za-z]+RLS != (\d+)", text)]
+        groups = self._runtime_groups()
+        self.assertEqual(
+            len(counts),
+            len(groups),
+            "every RLS table array needs exactly one count comparison",
+        )
+        for index, (count, group) in enumerate(zip(counts, groups, strict=True)):
+            with self.subTest(group=index):
+                self.assertEqual(
+                    count,
+                    len(group),
+                    f"readiness group {index} compares against {count} "
+                    f"but lists {len(group)} tables",
+                )
 
 
 if __name__ == "__main__":
