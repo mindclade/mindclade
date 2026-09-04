@@ -44,11 +44,11 @@ func experimentProto(ctx context.Context, tx *sql.Tx, row experimentRow) (*exper
 	if err != nil {
 		return nil, err
 	}
-	labels, err := loadMap(ctx, tx, `SELECT label_key,label_value FROM experiment_labels WHERE tenant_id=$1 AND project_id=$2 AND experiment_name=$3 ORDER BY label_key`, row.tenantID, row.projectID, row.name)
+	labels, err := platformdb.LoadStringMap(ctx, tx, `SELECT label_key,label_value FROM experiment_labels WHERE tenant_id=$1 AND project_id=$2 AND experiment_name=$3 ORDER BY label_key`, row.tenantID, row.projectID, row.name)
 	if err != nil {
 		return nil, err
 	}
-	annotations, err := loadMap(ctx, tx, `SELECT annotation_key,annotation_value FROM experiment_annotations WHERE tenant_id=$1 AND project_id=$2 AND experiment_name=$3 ORDER BY annotation_key`, row.tenantID, row.projectID, row.name)
+	annotations, err := platformdb.LoadStringMap(ctx, tx, `SELECT annotation_key,annotation_value FROM experiment_annotations WHERE tenant_id=$1 AND project_id=$2 AND experiment_name=$3 ORDER BY annotation_key`, row.tenantID, row.projectID, row.name)
 	if err != nil {
 		return nil, err
 	}
@@ -250,26 +250,6 @@ func trialProto(ctx context.Context, tx *sql.Tx, row trialRow) (*experimentv1.Tr
 		value.ElapsedTime = durationpb.New(time.Duration(row.elapsedSeconds.Int64)*time.Second + time.Duration(row.elapsedNanos.Int32))
 	}
 	return value, nil
-}
-
-func loadMap(ctx context.Context, tx *sql.Tx, query string, args ...any) (map[string]string, error) {
-	rows, err := tx.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	values := make(map[string]string)
-	for rows.Next() {
-		var key, value string
-		if err = rows.Scan(&key, &value); err != nil {
-			return nil, err
-		}
-		values[key] = value
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return values, nil
 }
 
 func mapNotFound(err error) error {

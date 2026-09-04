@@ -24,6 +24,41 @@ func CloseRows(rows *sql.Rows) error {
 
 var ErrTenantScopeRequired = errors.New("database tenant scope is required")
 
+// LoadStringMap reads a two-column key/value child table into a fresh map. The
+// caller supplies the whole statement because each table names its columns
+// differently; what is shared is the iteration and the error discipline.
+//
+// A scan or iteration error takes precedence over the close error, which is why
+// the close is not deferred. The returned map is non-nil even when no rows
+// matched, so callers may assign it to a protobuf field directly.
+//
+// This is the single-owner form and stays correct for Get paths. A page that
+// needs the same children for many owners at once wants a different shape --
+// three scanned columns and a map keyed by owner -- not extra arguments here.
+func LoadStringMap(ctx context.Context, tx *sql.Tx, query string, args ...any) (map[string]string, error) {
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("load string map: %w", err)
+	}
+	values := make(map[string]string)
+	for rows.Next() {
+		var key, value string
+		if err = rows.Scan(&key, &value); err != nil {
+			_ = CloseRows(rows)
+			return nil, fmt.Errorf("load string map: %w", err)
+		}
+		values[key] = value
+	}
+	if err = rows.Err(); err != nil {
+		_ = CloseRows(rows)
+		return nil, fmt.Errorf("load string map: %w", err)
+	}
+	if err = CloseRows(rows); err != nil {
+		return nil, fmt.Errorf("load string map: %w", err)
+	}
+	return values, nil
+}
+
 // Transaction is intentionally opaque: repositories expose no transaction object to workers.
 type Transaction interface {
 	AfterCommit(func(context.Context) error)

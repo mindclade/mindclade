@@ -56,47 +56,19 @@ func modelProto(ctx context.Context, tx *sql.Tx, row modelRow) (*modelv1.Model, 
 	if err != nil {
 		return nil, err
 	}
-	value := &modelv1.Model{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantName: "tenants/" + row.tenant, ProjectName: "tenants/" + row.tenant + "/projects/" + row.project, DisplayName: row.display, Family: row.family, State: modelv1.ModelState(row.state), DefinitionManifest: definition, FeatureRequirementSet: requirements, ModelFeatureView: view, InputContract: input, OutputContract: output, PolicyClassification: row.classification, CreateTime: timestamppb.New(row.created.UTC()), CurrentReleaseName: row.current, Labels: map[string]string{}, Annotations: map[string]string{}}
+	value := &modelv1.Model{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantName: "tenants/" + row.tenant, ProjectName: "tenants/" + row.tenant + "/projects/" + row.project, DisplayName: row.display, Family: row.family, State: modelv1.ModelState(row.state), DefinitionManifest: definition, FeatureRequirementSet: requirements, ModelFeatureView: view, InputContract: input, OutputContract: output, PolicyClassification: row.classification, CreateTime: timestamppb.New(row.created.UTC()), CurrentReleaseName: row.current}
 	if row.updated.Valid {
 		value.UpdateTime = timestamppb.New(row.updated.Time.UTC())
 	}
 	if row.deleted.Valid {
 		value.DeleteTime = timestamppb.New(row.deleted.Time.UTC())
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT label_key,label_value FROM model_labels WHERE tenant_id=$1 AND project_id=$2 AND model_name=$3 ORDER BY label_key`, row.tenant, row.project, row.name)
-	if err != nil {
+	if value.Labels, err = platformdb.LoadStringMap(ctx, tx, `SELECT label_key,label_value FROM model_labels WHERE tenant_id=$1 AND project_id=$2 AND model_name=$3 ORDER BY label_key`, row.tenant, row.project, row.name); err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var k, v string
-		if err = rows.Scan(&k, &v); err != nil {
-			_ = platformdb.CloseRows(rows)
-			return nil, err
-		}
-		value.Labels[k] = v
-	}
-	if err = rows.Err(); err != nil {
-		_ = platformdb.CloseRows(rows)
+	if value.Annotations, err = platformdb.LoadStringMap(ctx, tx, `SELECT annotation_key,annotation_value FROM model_annotations WHERE tenant_id=$1 AND project_id=$2 AND model_name=$3 ORDER BY annotation_key`, row.tenant, row.project, row.name); err != nil {
 		return nil, err
 	}
-	_ = platformdb.CloseRows(rows)
-	rows, err = tx.QueryContext(ctx, `SELECT annotation_key,annotation_value FROM model_annotations WHERE tenant_id=$1 AND project_id=$2 AND model_name=$3 ORDER BY annotation_key`, row.tenant, row.project, row.name)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var k, v string
-		if err = rows.Scan(&k, &v); err != nil {
-			_ = platformdb.CloseRows(rows)
-			return nil, err
-		}
-		value.Annotations[k] = v
-	}
-	if err = rows.Err(); err != nil {
-		_ = platformdb.CloseRows(rows)
-		return nil, err
-	}
-	_ = platformdb.CloseRows(rows)
 	return value, nil
 }
 
