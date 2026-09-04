@@ -568,9 +568,9 @@ class RepositoryPolicyTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             codeowners = Path(directory) / "CODEOWNERS"
             codeowners.write_text(
-                "* @mindclade/product-engineering\n"
-                "/README.md @mindclade/developer-platform\n"
-                "/README.md @mindclade/product-engineering\n",
+                "* @mindclade/product\n"
+                "/README.md @mindclade/platform\n"
+                "/README.md @mindclade/product\n",
                 encoding="utf-8",
             )
             gaps = validate_owners(manifest, [], codeowners)
