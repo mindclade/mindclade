@@ -411,7 +411,11 @@ func TestPostgresExperimentListLoadsEveryRowsOwnChildren(t *testing.T) {
 		subject     string
 	}
 	expected := map[string]expectation{}
-	for index, id := range []string{"alpha", "beta", "gamma"} {
+	// Each id doubles as the seed for digestFixture, which repeats the seed's
+	// first character 64 times to form the hex digest. Only ids starting with a
+	// hex digit produce a valid manifest, so these are alpha/beta/delta rather
+	// than the obvious alpha/beta/gamma.
+	for index, id := range []string{"alpha", "beta", "delta"} {
 		subjectName := projectParent(identity) + "/datasets/pdb/releases/" + id
 		subject := referenceFixture(identity, "dataset_release", id, subjectName, int64(index+1))
 		labels := map[string]string{"owner": id, "tier": "t" + id}

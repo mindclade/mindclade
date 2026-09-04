@@ -47,11 +47,17 @@ services:
 
   rehearse-control-plane-migrations:
     image: postgres@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    # Deliberately does not depend on migrate-control-plane. The rehearsal
+    # creates and drops its own mindclade_migration_rehearsal database and never
+    # touches the one migrate-control-plane populates, so the only real
+    # prerequisite is a healthy server. Depending on migrate made `just
+    # integration-up` unrunnable: that recipe runs migrate with `--rm`, so the
+    # completed container is gone by the time this service resolves its
+    # dependencies, and compose started a second migrate against the
+    # already-migrated database, which fails under ON_ERROR_STOP.
     depends_on:
       postgres:
         condition: service_healthy
-      migrate-control-plane:
-        condition: service_completed_successfully
     environment:
       PGHOST: postgres
       # Every down migration deliberately requires this explicit local or
@@ -72,7 +78,7 @@ services:
           echo 'down migration succeeded without explicit local authorization' >&2;
           exit 1;
         fi &&
-        test "$$(psql -At -d mindclade_migration_rehearsal -c \"SELECT to_regclass('dead_letter_replay_receipts') IS NOT NULL\")" = t &&
+        test "$$(psql -At -d mindclade_migration_rehearsal -c "SELECT to_regclass('dead_letter_replay_receipts') IS NOT NULL")" = t &&
         for migration in $$(find /migrations -maxdepth 1 -name '*.down.sql' -print | sort -r); do
           psql -v ON_ERROR_STOP=1 -d mindclade_migration_rehearsal -f "$${migration}";
         done &&

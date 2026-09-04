@@ -57,5 +57,11 @@ docs/architecture/blueprint/generated/*.tmp
 # calls a session made, not repository content, and they are rewritten on every
 # call -- so an ignored path here is what keeps the governance worktree scan
 # reporting real unknown paths instead of this session's own exhaust.
-/receipts/
-/review-receipts/
+#
+# Deliberately unanchored. The hook writes into the working directory of the
+# tool call, not the repository root, so a command run from any subdirectory
+# leaves a copy there and the unknown-path gate fails on the session's own
+# exhaust -- the exact outcome these two lines exist to prevent. No tracked path
+# uses either directory name.
+receipts/
+review-receipts/
