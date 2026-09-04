@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -330,8 +331,60 @@ def build_cache_boundary(
     }
 
 
+def _validator_dispatch_names() -> set[str]:
+    """Gate names `evidence_bundle.validate_check_report` actually dispatches on.
+
+    Read from the source rather than imported: the dispatch is an elif ladder over
+    string literals, not a table anything can enumerate. A name claimed twice makes
+    the later branch unreachable, so anything strengthened there asserts nothing.
+    """
+    source = (Path(__file__).resolve().parent / "evidence_bundle.py").read_text(encoding="utf-8")
+    for node in ast.walk(ast.parse(source)):
+        if not (isinstance(node, ast.FunctionDef) and node.name == "validate_check_report"):
+            continue
+        names: list[str] = []
+        for comparison in ast.walk(node):
+            if (
+                isinstance(comparison, ast.Compare)
+                and isinstance(comparison.left, ast.Name)
+                and comparison.left.id == "name"
+                and len(comparison.comparators) == 1
+                and isinstance(comparison.comparators[0], ast.Constant)
+                and isinstance(comparison.comparators[0].value, str)
+            ):
+                names.append(comparison.comparators[0].value)
+        repeated = sorted({name for name in names if names.count(name) > 1})
+        if repeated:
+            raise AssertionError(
+                f"validate_check_report dispatches more than once on {repeated}; the later "
+                "branch is unreachable and anything strengthened there asserts nothing"
+            )
+        return set(names)
+    raise AssertionError("evidence_bundle.py no longer defines validate_check_report")
+
+
+def _evidence_recipe_names() -> set[str]:
+    """Gate names `just ci-evidence` will forward, read from the recipe itself.
+
+    The recipe drops any report it does not list, silently, behind a `[[ -f ... ]]`
+    test. An omission there surfaces only as an exact-set mismatch hours into a
+    build, indistinguishable from the two other causes of the same message.
+    """
+    justfile = (Path(__file__).resolve().parents[2] / "justfile").read_text(encoding="utf-8")
+    return set(re.findall(r'"([a-z0-9-]+)=\{\{ evidence_dir \}\}/', justfile))
+
+
 def _assert_evidence_gate_sets_are_consistent() -> None:
-    """Gate the readiness report wherever the fresh-database check is gated.
+    """Hold the three copies of the gate inventory to one set.
+
+    A gate name must appear in the class plan below, in
+    `evidence_bundle.validate_check_report`, and in the `just ci-evidence`
+    forwarding list. `build_evidence` rejects a bundle whose report set differs
+    from the planned gate set, so any disagreement yields a bundle that can never
+    validate -- and every cause produces the same "provided check reports do not
+    match the exact planned gate set" message, hours into a build.
+
+    Gate the readiness report wherever the fresh-database check is gated.
 
     `just integration-ci` writes both `integration-ci.v1.json` and
     `authoritative-integration-readiness.v3.json` unconditionally, and
@@ -347,6 +400,7 @@ def _assert_evidence_gate_sets_are_consistent() -> None:
     """
     source_revision = "c" * 40
     pipeline_revision = "d" * 40
+    planned: set[str] = set()
     for pipeline_class in ("presubmit", "protected", "nightly", "gpu", "release", "security"):
         gates = build_plan(
             source_revision=source_revision,
@@ -354,6 +408,7 @@ def _assert_evidence_gate_sets_are_consistent() -> None:
             pipeline_class=pipeline_class,
             changed_files=["libs/go/audit/writer.go"],
         )["gates"]
+        planned.update(gates)
         if (
             "fresh-database-integration" in gates
             and "authoritative-integration-readiness" not in gates
@@ -362,6 +417,28 @@ def _assert_evidence_gate_sets_are_consistent() -> None:
                 f"pipeline class {pipeline_class!r} gates fresh-database-integration without "
                 "authoritative-integration-readiness; just integration-ci emits both reports and "
                 "ci-evidence requires the report set to equal the planned gate set exactly"
+            )
+
+    # A positive coverage assertion, not merely the absence of a mismatch: a check
+    # that narrows its own input set to nothing and reports success is the failure
+    # mode this repository keeps producing.
+    if not planned:
+        raise AssertionError("no pipeline class plans any gate; this check asserted nothing")
+    for label, other in (
+        ("evidence_bundle.validate_check_report", _validator_dispatch_names()),
+        ("the just ci-evidence forwarding list", _evidence_recipe_names()),
+    ):
+        missing = sorted(planned - other)
+        if missing:
+            raise AssertionError(
+                f"planned gates absent from {label}: {missing}; a build planning them can "
+                "never produce a bundle that validates"
+            )
+        orphaned = sorted(other - planned)
+        if orphaned:
+            raise AssertionError(
+                f"{label} names gates no pipeline class plans: {orphaned}; the entry is dead "
+                "and will silently stay dead"
             )
 
 
@@ -513,7 +590,10 @@ def readiness_self_test() -> None:
     check(report)
 
     missing_target = {key: value for key, value in criterion.items() if key != "bazel_targets"}
-    unknown_class = {**criterion, "qualification_class": "protected"}
+    # Must be outside READINESS_QUALIFICATION_CLASSES to test anything. This case
+    # previously used "protected", which is a *supported* class, so the gate
+    # correctly accepted it and the rejection case asserted nothing.
+    unknown_class = {**criterion, "qualification_class": "production"}
     rejections: list[tuple[str, dict[str, object]]] = [
         ("wrong source revision", seal({**report, "source_revision": "e" * 40})),
         ("self-asserted ratification", seal({**report, "ratification_authorized": True})),

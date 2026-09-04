@@ -52,6 +52,14 @@ ADR_PENDING_RATIFICATION = "Pending independent review on protected infrastructu
 FOUNDER_BOOTSTRAP_SCHEMA = "docs/governance/founder-bootstrap-exception.v1.schema.json"
 FOUNDER_BOOTSTRAP_RECORD = "docs/governance/exceptions/FBE-0001.yaml"
 FOUNDER_BOOTSTRAP_EXPIRY = date(2026, 9, 30)
+# The revision that first recorded FBE-0001. Exactly one commit has ever touched
+# the record, so this is unambiguous. It is the witness for the monotonicity check
+# in _assert_expiry_never_moved_later: cross-file consistency provably cannot
+# detect self-extension, because a single commit editing the record, the expected
+# contract below, and FOUNDER_BOOTSTRAP_EXPIRY together is internally consistent
+# by construction -- both sides of every comparison sit inside that one diff.
+# History is the one witness the editing commit cannot also author.
+FOUNDER_BOOTSTRAP_INTRODUCED_AT = "27da2248f8d60d225ac29e5917714afc3602d257"
 FOUNDER_BOOTSTRAP_ALLOWED_OPERATIONS = (
     "create",
     "adopt",
@@ -390,7 +398,48 @@ def _adr_required_index_fields(contract: AdrContract) -> set[str]:
     raise ValueError(f"unsupported ADR lifecycle: {contract.lifecycle}")
 
 
-def validate_founder_bootstrap_exception(root: Path) -> list[str]:
+def _assert_expiry_never_moved_later(root: Path, recorded_expiry: str) -> list[str]:
+    """Prove the recorded expiry is no later than the one first committed.
+
+    FBE-0001 forbids self-extension, but the gate that would catch it compares the
+    record against a constant that a self-extending commit edits in the same diff,
+    so it goes green on the violation. Reading the introducing revision out of git
+    breaks that circularity: the attacker's own commit is the evidence, and the
+    only way around it is a history rewrite, which is visible in the push feed.
+
+    A co-edit that leaves the expiry alone -- correcting an immutable field, as the
+    profile reconciliation requires -- passes here. That is deliberate: a separate
+    co-edit tripwire would fire on exactly that legitimate case while catching
+    nothing this does not already catch.
+    """
+    try:
+        blob = subprocess.run(
+            ["git", "show", f"{FOUNDER_BOOTSTRAP_INTRODUCED_AT}:{FOUNDER_BOOTSTRAP_RECORD}"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return [
+            "FBE-0001 expiry monotonicity is unprovable: cannot read the record at "
+            f"{FOUNDER_BOOTSTRAP_INTRODUCED_AT[:12]}. Missing state is denial."
+        ]
+    match = re.search(r'"expiresOn"\s*:\s*"(\d{4}-\d{2}-\d{2})"', blob)
+    if match is None:
+        return ["FBE-0001 expiry monotonicity is unprovable: the introducing record has no expiry"]
+    introduced = match.group(1)
+    if date.fromisoformat(recorded_expiry) > date.fromisoformat(introduced):
+        return [
+            "FBE-0001 expiry moved later than the value recorded at "
+            f"{FOUNDER_BOOTSTRAP_INTRODUCED_AT[:12]} ({introduced} -> {recorded_expiry}); "
+            "the exception forbids self-extension"
+        ]
+    return []
+
+
+def validate_founder_bootstrap_exception(root: Path, *, as_of: date | None = None) -> list[str]:
+    evaluation_date = as_of or date.today()
     errors: list[str] = []
     schema_path = root / FOUNDER_BOOTSTRAP_SCHEMA
     record_path = root / FOUNDER_BOOTSTRAP_RECORD
@@ -513,8 +562,12 @@ def validate_founder_bootstrap_exception(root: Path) -> list[str]:
     if immutable_contract != expected_contract:
         errors.append("FBE-0001 immutable authority, scope, permissions, or guards drifted")
 
+    recorded_expiry = metadata.get("expiresOn")
+    if isinstance(recorded_expiry, str):
+        errors.extend(_assert_expiry_never_moved_later(root, recorded_expiry))
+
     phase = status["phase"]
-    if phase == "AUTHORIZED_SOURCE_ONLY" and date.today() > FOUNDER_BOOTSTRAP_EXPIRY:
+    if phase == "AUTHORIZED_SOURCE_ONLY" and evaluation_date > FOUNDER_BOOTSTRAP_EXPIRY:
         errors.append("FBE-0001 source authorization is expired")
     initial_publication_state = initial_publication["state"]
     initial_publication_receipt = cast(dict[str, object], initial_publication["receipt"])
@@ -549,7 +602,8 @@ def validate_founder_bootstrap_exception(root: Path) -> list[str]:
     return errors
 
 
-def validate_adrs(root: Path) -> list[str]:
+def validate_adrs(root: Path, *, as_of: date | None = None) -> list[str]:
+    evaluation_date = as_of or date.today()
     errors: list[str] = []
     adr_root = root / "docs/adr"
     try:
@@ -557,7 +611,7 @@ def validate_adrs(root: Path) -> list[str]:
     except ValueError as error:
         return [str(error)]
     ratification_validator = cast(_Validator, Draft202012Validator(ratification_schema))
-    errors.extend(validate_founder_bootstrap_exception(root))
+    errors.extend(validate_founder_bootstrap_exception(root, as_of=evaluation_date))
     actual_paths = sorted(path.name for path in adr_root.glob("*.md"))
     if actual_paths != sorted(ADR_PATHS):
         errors.append("ADR file set does not match the ordered accepted/proposed registry")
@@ -638,7 +692,7 @@ def validate_adrs(root: Path) -> list[str]:
             text,
             re.MULTILINE,
         ):
-            if date.fromisoformat(raw_expiry) < date.today():
+            if date.fromisoformat(raw_expiry) < evaluation_date:
                 errors.append(f"{filename}: exception expired on {raw_expiry}")
 
         index = index_by_id.get(identifier)
@@ -1719,6 +1773,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--python-test", type=Path)
     parser.add_argument("--validate-adrs", type=Path)
+    parser.add_argument(
+        "--as-of",
+        type=date.fromisoformat,
+        help=(
+            "evaluate date-sensitive governance as of this ISO date instead of today; "
+            "the only way to demonstrate an expiry gate before the date arrives"
+        ),
+    )
     parser.add_argument("--org-schema", type=Path)
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--signature-envelope", type=Path)
@@ -1752,7 +1814,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return completed.returncode
     if args.validate_adrs:
         try:
-            errors = validate_adrs(args.validate_adrs.resolve())
+            errors = validate_adrs(args.validate_adrs.resolve(), as_of=args.as_of)
         except (OSError, ValueError) as error:
             print(f"ADR validation failed: {error}", file=sys.stderr)
             return 1
